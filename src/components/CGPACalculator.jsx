@@ -88,8 +88,6 @@ export default function CGPACalculator() {
   const [showMinors, setShowMinors]       = useState(false);
   const [minors, setMinors]               = useState(makeSubjectState(MINOR_TEMPLATE));
   const [result, setResult]               = useState(null);
-  const [saving, setSaving]               = useState(false);
-  const [saveStatus, setSaveStatus]       = useState(null); // 'success' | 'error' | null
   const [nameError, setNameError]         = useState(false); // blink when locked
 
   const nameEntered = studentName.trim().length > 0;
@@ -99,7 +97,6 @@ export default function CGPACalculator() {
     setSemGroup(g);
     setSubjects(makeSubjectState(g === 'maths' ? MATHS_GROUP : OS_GROUP));
     setResult(null);
-    setSaveStatus(null);
   };
 
   // Update subject marks
@@ -115,7 +112,6 @@ export default function CGPACalculator() {
       setSubjects(prev => prev.map(s => s.id === id ? { ...s, marks: val } : s));
     }
     setResult(null);
-    setSaveStatus(null);
   }, [nameEntered]);
 
   // Update minor name
@@ -186,46 +182,11 @@ export default function CGPACalculator() {
       totalWeighted,
       subjects: resolved.filter(s => !s.isMinor),
       minors:   resolved.filter(s => s.isMinor),
-      allSubjects: resolved,
       hasReappear: false,
     });
   };
 
-  // ── Save to MongoDB ────────────────────────────────────────────────────────
-  const saveToMongo = async () => {
-    if (!result || result.error || result.hasReappear) return;
-    setSaving(true);
-    setSaveStatus(null);
-    try {
-      const payload = {
-        studentName:          studentName.trim(),
-        semesterGroup:        semGroup,
-        subjects:             result.subjects.map(s => ({
-          name: s.name, credits: s.credits, marks: Number(s.marks),
-          grade: s.grade, gradePoints: s.points, isMinor: false,
-        })),
-        minors: result.minors.map(s => ({
-          name: s.name, credits: s.credits, marks: Number(s.marks),
-          grade: s.grade, gradePoints: s.points, isMinor: true,
-        })),
-        cgpa:                 result.cgpa,
-        totalCredits:         result.totalCredits,
-        totalWeightedPoints:  result.totalWeighted,
-        hasReappear:          false,
-      };
-      const res = await fetch('/api/results', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
-      });
-      const data = await res.json();
-      setSaveStatus(data.success ? 'success' : 'error');
-    } catch {
-      setSaveStatus('error');
-    } finally {
-      setSaving(false);
-    }
-  };
+
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   const reset = () => {
@@ -233,7 +194,6 @@ export default function CGPACalculator() {
     setSubjects(makeSubjectState(semGroup === 'maths' ? MATHS_GROUP : OS_GROUP));
     setMinors(makeSubjectState(MINOR_TEMPLATE));
     setResult(null);
-    setSaveStatus(null);
     setShowMinors(false);
   };
 
@@ -335,6 +295,13 @@ export default function CGPACalculator() {
                 <h2>Subject Marks</h2>
                 <p>Sorted by credits (high → low) · Enter marks out of 100</p>
               </div>
+            </div>
+
+            <div className="weightage-highlight-banner">
+              <span className="banner-icon">⚠️</span>
+              <span className="banner-text">
+                Put only weightage marks out of 100 for correct approx calculation
+              </span>
             </div>
 
 
@@ -464,8 +431,7 @@ export default function CGPACalculator() {
           </button>
 
           {/* ── RESULT ── */}
-          {result && <ResultPanel result={result} studentName={studentName}
-            saving={saving} saveStatus={saveStatus} onSave={saveToMongo} />}
+          {result && <ResultPanel result={result} studentName={studentName} />}
 
           {/* ── RESET ── */}
           <button className="reset-btn" onClick={reset}>↩ Reset Calculator</button>
@@ -535,7 +501,7 @@ function GradeDisplay({ g, marks }) {
 }
 
 // ── Result Panel ──────────────────────────────────────────────────────────────
-function ResultPanel({ result, studentName, saving, saveStatus, onSave }) {
+function ResultPanel({ result, studentName }) {
   // Error states
   if (result.error === 'invalid') {
     const bad = result.subjects.filter(s => s.invalid);
@@ -685,23 +651,6 @@ function ResultPanel({ result, studentName, saving, saveStatus, onSave }) {
             })}
           </tbody>
         </table>
-      </div>
-
-      {/* Save to MongoDB */}
-      <div className="save-section">
-        <button
-          className="save-btn"
-          onClick={onSave}
-          disabled={saving || saveStatus === 'success'}
-        >
-          {saving ? '⏳ Saving to Atlas...'
-            : saveStatus === 'success' ? '✅ Saved to MongoDB Atlas!'
-            : saveStatus === 'error'   ? '❌ Save Failed — Retry'
-            : '💾 Save Result to MongoDB Atlas'}
-        </button>
-        {saveStatus === 'error' && (
-          <p className="save-error-hint">Make sure the backend server is running and .env is configured.</p>
-        )}
       </div>
 
       {/* Disclaimer */}
