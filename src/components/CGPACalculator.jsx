@@ -88,6 +88,7 @@ export default function CGPACalculator() {
   const [showMinors, setShowMinors]       = useState(false);
   const [minors, setMinors]               = useState(makeSubjectState(MINOR_TEMPLATE));
   const [result, setResult]               = useState(null);
+  const [dbStatus, setDbStatus]           = useState(null); // 'saving' | 'success' | 'error' | null
   const [nameError, setNameError]         = useState(false); // blink when locked
 
   const nameEntered = studentName.trim().length > 0;
@@ -97,6 +98,7 @@ export default function CGPACalculator() {
     setSemGroup(g);
     setSubjects(makeSubjectState(g === 'maths' ? MATHS_GROUP : OS_GROUP));
     setResult(null);
+    setDbStatus(null);
   };
 
   // Update subject marks
@@ -112,11 +114,14 @@ export default function CGPACalculator() {
       setSubjects(prev => prev.map(s => s.id === id ? { ...s, marks: val } : s));
     }
     setResult(null);
+    setDbStatus(null);
   }, [nameEntered]);
 
   // Update minor name
   const updateMinorName = (id, val) => {
     setMinors(prev => prev.map(m => m.id === id ? { ...m, name: val } : m));
+    setResult(null);
+    setDbStatus(null);
   };
 
   // ── Calculate ──────────────────────────────────────────────────────────────
@@ -176,17 +181,50 @@ export default function CGPACalculator() {
 
     const cgpa = totalCredits > 0 ? +(totalWeighted / totalCredits).toFixed(2) : 0;
 
-    setResult({
+    const finalResult = {
       cgpa,
       totalCredits,
       totalWeighted,
       subjects: resolved.filter(s => !s.isMinor),
       minors:   resolved.filter(s => s.isMinor),
       hasReappear: false,
-    });
+    };
+
+    setResult(finalResult);
+    autoSaveToMongo(finalResult);
   };
 
-
+  // ── Auto Save to MongoDB ──
+  const autoSaveToMongo = async (resObj) => {
+    setDbStatus('saving');
+    try {
+      const payload = {
+        studentName:          studentName.trim(),
+        semesterGroup:        semGroup,
+        subjects:             resObj.subjects.map(s => ({
+          name: s.name, credits: s.credits, marks: Number(s.marks),
+          grade: s.grade, gradePoints: s.points, isMinor: false,
+        })),
+        minors: resObj.minors.map(s => ({
+          name: s.name, credits: s.credits, marks: Number(s.marks),
+          grade: s.grade, gradePoints: s.points, isMinor: true,
+        })),
+        cgpa:                 resObj.cgpa,
+        totalCredits:         resObj.totalCredits,
+        totalWeightedPoints:  resObj.totalWeighted,
+        hasReappear:          false,
+      };
+      const res = await fetch('/api/results', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setDbStatus(data.success ? 'success' : 'error');
+    } catch {
+      setDbStatus('error');
+    }
+  };
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   const reset = () => {
@@ -194,6 +232,7 @@ export default function CGPACalculator() {
     setSubjects(makeSubjectState(semGroup === 'maths' ? MATHS_GROUP : OS_GROUP));
     setMinors(makeSubjectState(MINOR_TEMPLATE));
     setResult(null);
+    setDbStatus(null);
     setShowMinors(false);
   };
 
@@ -431,7 +470,7 @@ export default function CGPACalculator() {
           </button>
 
           {/* ── RESULT ── */}
-          {result && <ResultPanel result={result} studentName={studentName} />}
+          {result && <ResultPanel result={result} studentName={studentName} dbStatus={dbStatus} />}
 
           {/* ── RESET ── */}
           <button className="reset-btn" onClick={reset}>↩ Reset Calculator</button>
@@ -501,7 +540,7 @@ function GradeDisplay({ g, marks }) {
 }
 
 // ── Result Panel ──────────────────────────────────────────────────────────────
-function ResultPanel({ result, studentName }) {
+function ResultPanel({ result, studentName, dbStatus }) {
   // Error states
   if (result.error === 'invalid') {
     const bad = result.subjects.filter(s => s.invalid);
@@ -593,6 +632,14 @@ function ResultPanel({ result, studentName }) {
           {cgpaLab}
         </div>
         <div className="result-total-credits">Total Credits: {totalCredits} · Weighted Points: {totalWeighted.toFixed(1)}</div>
+        {dbStatus && (
+          <div className={`db-status-badge ${dbStatus}`}>
+            <span className="status-dot" />
+            {dbStatus === 'saving' && 'Syncing with MongoDB Atlas...'}
+            {dbStatus === 'success' && 'Saved to MongoDB Atlas!'}
+            {dbStatus === 'error' && 'MongoDB Atlas Sync Offline'}
+          </div>
+        )}
       </div>
 
       {/* Stats */}

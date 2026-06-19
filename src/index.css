@@ -445,6 +445,49 @@ body { background: var(--bg-primary); min-height: 100vh; overflow-x: hidden; }
   50% { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(245, 158, 11, 1)); }
 }
 
+/* ── DATABASE STATUS BADGE ── */
+.db-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-top: 14px;
+  border: 1px solid;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.db-status-badge.saving {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #fbd38d;
+}
+.db-status-badge.saving .status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #fbd38d;
+  animation: pulse-dot 1.5s infinite ease-in-out;
+}
+.db-status-badge.success {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+.db-status-badge.success .status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #34d399;
+}
+.db-status-badge.error {
+  background: rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.25);
+  color: #f87171;
+}
+.db-status-badge.error .status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #f87171;
+}
+
 /* ── DISCLAIMER ── */
 .disclaimer {
   display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px;
