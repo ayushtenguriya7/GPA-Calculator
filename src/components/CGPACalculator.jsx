@@ -632,11 +632,10 @@ function ResultPanel({ result, studentName, dbStatus }) {
           {cgpaLab}
         </div>
         <div className="result-total-credits">Total Credits: {totalCredits} · Weighted Points: {totalWeighted.toFixed(1)}</div>
-        {dbStatus && dbStatus !== 'success' && (
-          <div className={`db-status-badge ${dbStatus}`}>
+        {dbStatus === 'error' && (
+          <div className="db-status-badge error">
             <span className="status-dot" />
-            {dbStatus === 'saving' && 'Syncing...'}
-            {dbStatus === 'error' && 'MongoDB Atlas Sync Offline'}
+            MongoDB Atlas Sync Offline
           </div>
         )}
       </div>
