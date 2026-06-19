@@ -82,6 +82,10 @@ app.get('/api/results', async (req, res) => {
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
